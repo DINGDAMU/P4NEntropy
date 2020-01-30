@@ -79,9 +79,11 @@ struct metadata {
     bit<64> sum;
     bit<64> log_sum;
     bit<64> log_S;
+    bit<64> log_S1;
+    bit<64> log_S2;
+    bit<64> log_S3;
     bit<64> entropy;
-
-}
+   }
 
 struct headers {
     @name(".ethernet") 
@@ -155,13 +157,13 @@ register<bit<64>>(32w30) register4;
 register<bit<64>>(32w5)  queryResult;
 register<bit<64>>(32w1)  SUM;
 register<bit<64>>(32w1)  S;
-register<bit<64>>(32w4)  finalResults;
+register<bit<64>>(32w5)  finalResults;
 
 control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_t standard_metadata) {
      action do_expES()  {
         meta.exp_value = (bit<64>)(meta.bEXP >> 10);
         meta.pow = (bit<64>)meta.bEXP - (meta.exp_value << 10);
-        meta.decimal = meta.decimal + meta.pow;
+        meta.decimal = meta.pow;
         meta.decimal = meta.decimal + 64w1024;
         meta.decimal = meta.decimal - (meta.pow * (64w1024 - meta.pow) >> 11);
         meta.decimal = meta.decimal + (((meta.pow * (64w1024 - meta.pow)>>10) * (64w2048 - meta.pow)>>10) * 64w170 >> 10);
@@ -245,6 +247,64 @@ control ingress(inout headers hdr, inout metadata meta, inout standard_metadata_
                 }
             else {
                 meta.log_S = meta.log_S + 64w827;
+            }
+        }
+
+  
+    }
+
+action do_logES_dec4() {
+            meta.log_S1 = (bit<64>)((meta.buc_val - 64w1) << 10);
+           meta.buc_sumR1 = meta.buc_sum ^ (meta.buc_sum >> 8w1);
+           meta.buc_sumR2 = meta.buc_sum ^ (meta.buc_sum >> 8w2);
+            if (meta.buc_sum < meta.buc_sumR1 ){
+                if(meta.buc_sum > meta.buc_sumR2){
+                    meta.log_S1 = meta.log_S1 + 64w330;
+                }
+            }else {
+                if (meta.buc_sum < meta.buc_sumR2) {
+                    meta.log_S1 = meta.log_S1 + 64w599;
+                }
+            else {
+                meta.log_S1 = meta.log_S1 + 64w827;
+            }
+        }
+
+  
+    }
+action do_logES_dec5() {
+            meta.log_S2 = (bit<64>)((meta.buc_val - 64w1) << 10);
+           meta.buc_sumR1 = meta.buc_sum ^ (meta.buc_sum >> 8w1);
+           meta.buc_sumR2 = meta.buc_sum ^ (meta.buc_sum >> 8w2);
+            if (meta.buc_sum < meta.buc_sumR1 ){
+                if(meta.buc_sum > meta.buc_sumR2){
+                    meta.log_S2 = meta.log_S2 + 64w330;
+                }
+            }else {
+                if (meta.buc_sum < meta.buc_sumR2) {
+                    meta.log_S2 = meta.log_S2 + 64w599;
+                }
+            else {
+                meta.log_S2 = meta.log_S2 + 64w827;
+            }
+        }
+
+  
+    }
+action do_logES_dec6() {
+            meta.log_S3 = (bit<64>)((meta.buc_val - 64w1) << 10);
+           meta.buc_sumR1 = meta.buc_sum ^ (meta.buc_sum >> 8w1);
+           meta.buc_sumR2 = meta.buc_sum ^ (meta.buc_sum >> 8w2);
+            if (meta.buc_sum < meta.buc_sumR1 ){
+                if(meta.buc_sum > meta.buc_sumR2){
+                    meta.log_S3 = meta.log_S3 + 64w330;
+                }
+            }else {
+                if (meta.buc_sum < meta.buc_sumR2) {
+                    meta.log_S3 = meta.log_S3 + 64w599;
+                }
+            else {
+                meta.log_S3 = meta.log_S3 + 64w827;
             }
         }
 
@@ -345,6 +405,22 @@ action do_update() {
             do_logES;
         }
     }
+    table logES4{
+        actions = {
+            do_logES;
+        }
+    }
+    table logES5{
+        actions = {
+            do_logES;
+        }
+    }
+    table logES6{
+        actions = {
+            do_logES;
+        }
+    }
+
     table logES_dec{
         actions = {
             do_logES_dec;
@@ -361,7 +437,29 @@ action do_update() {
         }
     }
 
+ table logES_dec4{
+        actions = {
+            do_logES_dec4;
+        }
+    }
+ table logES_dec5{
+        actions = {
+            do_logES_dec5;
+        }
+    }
+ table logES_dec6{
+        actions = {
+            do_logES_dec6;
+        }
+    }
+
     table expES{
+        actions = {
+            do_expES;
+        }
+    }
+
+    table expES2{
         actions = {
             do_expES;
         }
@@ -382,8 +480,6 @@ action do_update() {
         logES_dec.apply();
         if  (meta.buc_sum == 2 ){
             meta.sum = meta.sum + meta.log_value + 1024;
-/*        }else if (meta.buc_sum > 2 && meta.buc_sum < 6){*/
-            /*meta.sum = meta.sum + meta.log_value + 1198;*/
         }else if (meta.buc_sum > 6){
             meta.sum = meta.sum + meta.log_value + 1475;
         }else{
@@ -432,7 +528,7 @@ action do_update() {
                      meta.power_sum = (bit<64>)meta.powerS * (1<<56);
                  }
          
-                meta.power_sum = (meta.power_sum) * meta.decimal;
+            meta.power_sum = (meta.power_sum) * meta.decimal;
             finalResults.write(2, meta.power_sum);
             meta.entropy = (meta.log_S - (meta.power_sum));
 
@@ -441,7 +537,61 @@ action do_update() {
            }else{
                 meta.entropy = meta.log_S;
            }
+            // Normalized entropy starting from below
+           // n is the value obtained from P4LogLog
+            bit<64> n;
+            bit<64> loglogn;
+            bit<64> logE;
+            bit<64> diff;
+           n = 100;
+           meta.buc_sum = n;
+           logES4.apply();
+           logES_dec4.apply();
+           meta.buc_sum = meta.log_S1;
+           logES5.apply();
+           logES_dec5.apply();
+           loglogn = meta.log_S2;
+           meta.buc_sum = meta.entropy;
+           logES6.apply();
+           logES_dec6.apply();
+           logE = meta.log_S3;
+           loglogn = loglogn - 10240;
+           diff = logE - loglogn;
+           if (diff > 0){
+           meta.bEXP = diff;
+           expES2.apply();
+        if (meta.exp_value < 8){
+                     meta.powerS = (bit<8>)1<< ((bit<8>)meta.exp_value);
+                     meta.power_sum = (bit<64>)meta.powerS;
+                 }else if (meta.exp_value < 16 ){
+                     meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 8);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<8);
+                 }else if (meta.exp_value < 24 ){
+         meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 16);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<16);
+                 }else if (meta.exp_value < 32 ){
+         meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 24);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<24);
+                 }else if (meta.exp_value < 40 ){
+         meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 32);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<32);
+                 }else if (meta.exp_value < 48 ){
+         meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 40);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<40);
+                 }else if (meta.exp_value < 56 ){
+         meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 48);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<48);
+                 }else{
+         meta.powerS =(bit<8>)1<<((bit<8>)meta.exp_value - 56);
+                     meta.power_sum = (bit<64>)meta.powerS * (1<<56);
+                 }
+           finalResults.write(4, meta.power_sum);
+            }else{
+            finalResults.write(4, 0);
 
+            }
+
+           
                        
            }
 }
