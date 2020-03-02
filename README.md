@@ -21,7 +21,7 @@ Installation
     ```
     I have already modified the default docker image to **dingdamu/p4app-ddos:nwhhd**, so `p4app` script can be used directly.
 
-P4Entropy
+P4NEntropy
 --------------
 
 1.  ```
@@ -30,7 +30,7 @@ P4Entropy
     After this step you'll see the terminal of **mininet**
 2. Forwarding at least 10 packets in **mininet**
 
-Check the difference of entropy between
+Check the difference of normalized entropy between
    ```
     pingall
     pingall
@@ -42,9 +42,9 @@ and
 
 
 
-3. Enter p4entropy.p4app folder
+3. Enter p4nentropy.p4app folder
    ```
-    cd p4entropy.p4app 
+    cd p4nentropy.p4app 
    ```
 4. Check the result by reading the register
    ```
