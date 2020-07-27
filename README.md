@@ -7,7 +7,7 @@ Installation
 2. Clone the repository to local 
 
     ```
-    git clone https://github.com/DINGDAMU/P4Entropy.git    
+    git clone https://github.com/DINGDAMU/P4NEntropy.git    
     ```
 
 3. ```
@@ -25,7 +25,7 @@ P4NEntropy
 --------------
 
 1.  ```
-    ./p4app run p4entropy.p4app 
+    ./p4app run p4nentropy.p4app 
     ```
     After this step you'll see the terminal of **mininet**
 2. Forwarding at least 10 packets in **mininet**
